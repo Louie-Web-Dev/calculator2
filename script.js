@@ -1,102 +1,137 @@
 const display = document.getElementById("display");
 const music = document.getElementById("music");
+const music2 = document.getElementById("music2");
+const music3 = document.getElementById("music3");
+const music4 = document.getElementById("music4");
 
-let num1 = null;
-let operator = null;
-let waitingForSecond = false;
+let expression = "";
+let justEvaluated = false;
+let isTypingLyrics = false;
 
-const lyricsWithTiming = [
-   ["Hindi na makalaya", 2300, 140],
-  ["Dinadalaw mo 'ko bawat gabi", 1600, 120],
-  ["Wala mang nakikita", 2000, 120],
-  ["Haplos mo'y ramdam pa rin sa dilim", 1900, 90],
-  ["Hindi na nananaginip", 2000, 110],
-  ["Hindi na ma-makagising", 2000, 120],
-  ["Pasindi na ng ilaw", 2200, 120],
-  ["Minumulto na 'ko ng damdamin ko", 900, 120],
-  ["Ng damdamin ko", 300, 100],
-  ["Hindi mo ba ako lilisanin?", 1000, 100],
-  ["hindi pa ba sapat pagpapahirap sa'kin?", 800, 120],
-  ["hindi na ba ma-mamamayapa?", 1000, 120],
-  ["hindi na ba ma-mamamayapa?", 800, 120],
-  ["Hindi na makalaya", 3000, 120],
-
+const lyricsSong1 = [
+  ["Ang iyong", 3000, 140],
+  ["ganda'y", 2500, 140],
+  ["umaabot", 1000, 200],
+  ["sa buwan 🌕", 3000, 200],
+  ["Ang tibok", 2800, 130],
+  ["ng puso'y ❤️", 1900, 120],
+  ["dinig sa", 1000, 110],
+  ["kalawakan 🌌", 1500, 200],
+  ["At bumabalik", 1300, 180],
+  ["dito sa akin", 1700, 150],
+  ["Ikaw ang mahal", 1800, 150],
+  ["ikaw lang", 1000, 110],
+  ["ang mamahalin", 2000, 140],
+  ["Pakinggan", 1100, 120],
+  ["ang puso't", 800, 120],
+  ["damdamin", 1100, 100],
+  ["Damdamin aking damdamin", 2000, 130],
 ];
 
-function typeLyrics(index = 0) {
-  if (index >= lyricsWithTiming.length) {
-    display.value = "0";
-    return;
+function typeLyrics(lyrics) {
+  let index = 0;
+  isTypingLyrics = true;
+
+  function showNext() {
+    if (index < lyrics.length) {
+      const [line, delay, speed] = lyrics[index];
+      let charIndex = 0;
+      display.value = "";
+      function typeChar() {
+        if (charIndex < line.length) {
+          display.value += line[charIndex];
+          charIndex++;
+          setTimeout(typeChar, speed);
+        } else {
+          index++;
+          setTimeout(showNext, delay);
+        }
+      }
+      typeChar();
+    } else {
+      display.value = "0";
+      expression = "";
+      justEvaluated = false;
+      isTypingLyrics = false;
+    }
   }
 
-  const [word, delay, typingSpeed] = lyricsWithTiming[index];
-  let i = 0;
-  display.value = "";
-
-  const interval = setInterval(() => {
-    display.value += word[i];
-    i++;
-    if (i >= word.length) {
-      clearInterval(interval);
-      setTimeout(() => typeLyrics(index + 1), delay);
-    }
-  }, typingSpeed);
+  showNext();
 }
 
-document.querySelectorAll(".buttons button").forEach((button) => {
-  button.addEventListener("click", () => {
-    const val = button.textContent;
+document.querySelectorAll(".buttons button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const val = btn.textContent;
+
+    if (isTypingLyrics) return;
 
     if (!isNaN(val) || val === ".") {
-      if (waitingForSecond) {
+      if (display.value === "0" || justEvaluated) {
         display.value = val;
-        waitingForSecond = false;
+        justEvaluated = false;
       } else {
-        display.value = display.value === "0" ? val : display.value + val;
+        display.value += val;
       }
+      expression += val;
+    } else if (["+", "-", "×", "÷"].includes(val)) {
+      display.value += val;
+      expression += val === "×" ? "*" : val === "÷" ? "/" : val;
+      justEvaluated = false;
     } else if (val === "AC") {
       display.value = "0";
-      num1 = null;
-      operator = null;
+      expression = "";
+      justEvaluated = false;
     } else if (val === "+/-") {
-      display.value = String(parseFloat(display.value) * -1);
-    } else if (val === "%") {
-      display.value = String(parseFloat(display.value) / 100);
-    } else if (val === "√") {
-      display.value = String(Math.sqrt(parseFloat(display.value)));
-    } else if (val === "=") {
-      if (operator && num1 !== null) {
-        let num2 = parseFloat(display.value);
-        let result;
-        switch (operator) {
-          case "+":
-            result = num1 + num2;
-            break;
-          case "-":
-            result = num1 - num2;
-            break;
-          case "×":
-            result = num1 * num2;
-            break;
-          case "÷":
-            result = num2 !== 0 ? num1 / num2 : 0;
-            break;
-        }
-        display.value = result;
-
-        if (num1 === 1 && num2 === 1 && operator === "+") {
-          music.play();
-          typeLyrics();
-        }
-
-        operator = null;
-        num1 = null;
+      if (display.value.startsWith("-")) {
+        display.value = display.value.slice(1);
+      } else {
+        display.value = "-" + display.value;
       }
-    } else {
+      expression = display.value;
+    } else if (val === "%") {
+      try {
+        const result = eval(expression + "/100");
+        display.value = result;
+        expression = String(result);
+      } catch {
+        display.value = "Error";
+        expression = "";
+      }
+    } else if (val === "√") {
+      try {
+        const result = Math.sqrt(eval(expression));
+        display.value = result;
+        expression = String(result);
+      } catch {
+        display.value = "Error";
+        expression = "";
+      }
+    } else if (val === "=") {
+      try {
+        const result = eval(expression);
+        display.value = result;
+        expression = String(result);
+        justEvaluated = true;
 
-      num1 = parseFloat(display.value);
-      operator = val;
-      waitingForSecond = true;
+        if (expression === "2") {
+          music.currentTime = 0;
+          music.play();
+          typeLyrics(lyricsSong1);
+        }
+        if (expression === "4") {
+          music2.currentTime = 0;
+          music2.play();
+          typeLyrics(lyricsSong2);
+        }
+        if (expression === "6") {
+          music3.currentTime = 0;
+          music3.play();
+          typeLyrics(lyricsSong3);
+        }
+      } catch {
+        display.value = "Error";
+        expression = "";
+      }
     }
   });
 });
